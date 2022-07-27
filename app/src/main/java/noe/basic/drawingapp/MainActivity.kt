@@ -4,11 +4,14 @@ import android.Manifest
 import android.Manifest.permission
 import android.content.DialogInterface
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -16,49 +19,61 @@ import androidx.core.content.ContextCompat
 
 
 class MainActivity : AppCompatActivity() {
-    //objeto que dibuja el dialogo para obtener permisos
-    private var cameraResultLauncher : ActivityResultLauncher<String> =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()){
-            //trabaja e imprime el resultado dado la opcion elegida
-                isGranted ->
-                    if(isGranted){
-                        Toast.makeText(this,"permission granted qp rahu xd",Toast.LENGTH_SHORT).show()
-                    }else{
-                        Toast.makeText(this,"permission ungranted",Toast.LENGTH_SHORT).show()
-                    }
-            }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val btnPermission = findViewById<Button>(R.id.button_request_permissions)
         btnPermission.setOnClickListener {
-            setPermission()
+            requestPermission()
+        }
+
+    }
+    private fun hasWriteExternalStoragePermission() =
+        ActivityCompat.checkSelfPermission(this,permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+
+    private fun hasLocationCoarsePermission() =
+        ActivityCompat.checkSelfPermission(this,permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+   /* @RequiresApi(Build.VERSION_CODES.Q)
+    private fun hasLocationBackGroundPermission() =
+        ActivityCompat.checkSelfPermission(this,permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED*/
+    private fun hasCameraPermission() =
+        ActivityCompat.checkSelfPermission(this,permission.CAMERA)  == PackageManager.PERMISSION_GRANTED
+
+    private fun requestPermission() {
+        var permissionListToRequest = mutableListOf<String>()
+        if(!hasWriteExternalStoragePermission()){
+            permissionListToRequest.add(permission.WRITE_EXTERNAL_STORAGE)
+        }
+        if(!hasLocationCoarsePermission()){
+            permissionListToRequest.add(permission.ACCESS_COARSE_LOCATION)
+        }
+       /* if(!hasLocationBackGroundPermission()){
+            permissionListToRequest.add(permission.ACCESS_BACKGROUND_LOCATION)
+        }*/
+        if(!hasCameraPermission()){
+            permissionListToRequest.add(permission.CAMERA)
+        }
+        if(permissionListToRequest.isNotEmpty()){
+            //if we request different permission at different given times the requestcode will be the flag to differ which operation will
+            //be executed onRequestPermission Result
+            ActivityCompat.requestPermissions(this, permissionListToRequest.toTypedArray(),0)
+        }
+    }
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if(requestCode ==0 && grantResults.isNotEmpty()){
+            for (i in grantResults.indices){
+                Log.d("Permission Request", "${permissions[i]} granted")
+            }
         }
     }
 
-    private fun showRtionaleDialog(title : String, message: String){
-        val builder : AlertDialog.Builder = AlertDialog.Builder(this)
-        builder.setTitle(title)
-        builder.setMessage(message)
-        builder.setPositiveButton("cancel"){
-            dialog,_-> dialog.dismiss()
-        }
-        builder.setNegativeButton(
-            "Grant permission"
-        ) { dialog, which ->
-            cameraResultLauncher.launch(permission.CAMERA)
-            dialog.dismiss()
-        }
-        builder.create().show()
-    }
-    private fun setPermission(){
-        //ya asignaste pero el permiso fue denegado
-        if (shouldShowRequestPermissionRationale(permission.CAMERA)){
-            showRtionaleDialog("This app needs a Camera permission","you already denied the permission")
-        }else{
-            //asignas que permiso deseas solicitar en base a la string permission.
-            cameraResultLauncher.launch(permission.CAMERA)
-        }
-    }
+
 }
